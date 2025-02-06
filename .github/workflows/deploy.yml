@@ -1,7 +1,10 @@
 name: id-token-debug
 
 on:
-  workflow_dispatch:
+  pull_request:
+    types: [closed]  # Runs only when a PR is merged
+    branches:
+      - main
 
 jobs:
   get-id-token:
