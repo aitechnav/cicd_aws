@@ -1,9 +1,9 @@
-name: Deploy Flask App to AWS Lambda
+name: Deploy App 
 
 on:
   push:
     branches:
-      - main  # Change as needed
+      - ["main"]
 
 permissions:
   id-token: write
@@ -12,7 +12,6 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -20,9 +19,8 @@ jobs:
       - name: Configure AWS Credentials (STS Authentication)
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          role-session-name: github-oidc
-          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::302263053017:role/github-oidc #${{ vars.AWS_ROLE_ARN }}
+          aws-region: us-east-1
 
       - name: Set Image Tag
         run: echo "IMAGE_TAG=$(date +%Y%m%d%H%M%S)" >> $GITHUB_ENV
