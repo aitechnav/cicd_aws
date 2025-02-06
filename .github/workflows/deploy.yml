@@ -17,6 +17,12 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Debug GitHub OIDC Token
+        run: |
+          echo "Retrieving OIDC Token..."
+          TOKEN=$(curl -sSL -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL")
+          echo "OIDC Token Payload: $TOKEN" | jq '.'
+
       - name: Configure AWS Credentials (STS Authentication)
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -24,9 +30,6 @@ jobs:
           role-session-name: github-oidc
           aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Debug GitHub OIDC Token
-        run: echo "OIDC AUDIENCE: ${{ steps.configure.outputs.aud }}"
-        
       - name: Set Image Tag
         run: echo "IMAGE_TAG=$(date +%Y%m%d%H%M%S)" >> $GITHUB_ENV
 
