@@ -20,8 +20,11 @@ jobs:
       - name: Debug GitHub OIDC Token
         run: |
           echo "Retrieving OIDC Token..."
-          TOKEN=$(curl -sSL -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL")
-          echo "OIDC Token Payload: $TOKEN" | jq '.'
+          echo "ACTIONS_ID_TOKEN_REQUEST_URL: $ACTIONS_ID_TOKEN_REQUEST_URL"
+          TOKEN_RAW=$(curl -sSL -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL")
+          echo "Raw OIDC Token Response: $TOKEN_RAW"
+          echo "$TOKEN_RAW" | jq '.' || echo "Failed to parse JSON response"
+
 
       - name: Configure AWS Credentials (STS Authentication)
         uses: aws-actions/configure-aws-credentials@v2
