@@ -3,7 +3,7 @@ name: Deploy App
 on:
   push:
     branches:
-      - main
+    - main
 
 permissions:
   id-token: write
@@ -20,6 +20,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::302263053017:role/github-oidc #${{ vars.AWS_ROLE_ARN }}
+          role-session-name: GitHubActions
           aws-region: us-east-1
 
       - name: Set Image Tag
