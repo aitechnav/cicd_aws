@@ -21,9 +21,12 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          role-session-name: GitHubActions
+          role-session-name: github-oidc
           aws-region: ${{ vars.AWS_REGION }}
 
+      - name: Debug GitHub OIDC Token
+        run: echo "OIDC AUDIENCE: ${{ steps.configure.outputs.aud }}"
+        
       - name: Set Image Tag
         run: echo "IMAGE_TAG=$(date +%Y%m%d%H%M%S)" >> $GITHUB_ENV
 
