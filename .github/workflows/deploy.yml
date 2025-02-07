@@ -3,8 +3,6 @@ name: Deploy App
 on:
   pull_request:
     branches: main
-  push:
-    branches: main
 
 permissions:
   id-token: write
@@ -20,11 +18,11 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v3
         with:
-          role-to-assume: arn:aws:iam::302263053017:role/githubaction #${{ vars.AWS_ROLE_ARN }}
+          role-to-assume: arn:aws:iam::302263053017:role/githubaction
           role-session-name: GitHubActions
           aws-region: us-east-1
-          audience: token.actions.githubusercontent.com
-          
+          audience: sts.amazonaws.com  
+
       - name: Set Image Tag
         run: echo "IMAGE_TAG=$(date +%Y%m%d%H%M%S)" >> $GITHUB_ENV
 
