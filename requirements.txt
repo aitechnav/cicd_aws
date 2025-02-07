@@ -1,2 +1,2 @@
 flask
-aws-wsgi
+aws-wsgi-middleware
