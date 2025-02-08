@@ -5,7 +5,7 @@ FROM public.ecr.aws/lambda/python:3.12
 WORKDIR /var/task
 
 # Copy application files
-COPY app/ ./app/
+
 COPY lambda_function.py .
 COPY requirements.txt .
 
