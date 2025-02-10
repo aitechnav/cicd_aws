@@ -1,4 +1,4 @@
-name: Deploy App 
+name: Deploy App
 
 on:
   push:
@@ -10,8 +10,10 @@ permissions:
   contents: read
 
 jobs:
-  deploy:
+  authenticate-aws:
     runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.set-image-tag.outputs.IMAGE_TAG }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -19,29 +21,53 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v3
         with:
-          role-to-assume: arn:aws:iam::302263053017:role/pipeline
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/pipeline
           role-session-name: GitHubActions
-          aws-region: us-east-1
+          aws-region: ${{ vars.AWS_REGION }}
           audience: sts.amazonaws.com  
 
       - name: Set Image Tag
+        id: set-image-tag
         run: echo "IMAGE_TAG=$(date +%Y%m%d%H%M%S)" >> $GITHUB_ENV
+
+  push-to-ecr:
+    needs: authenticate-aws
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
       - name: Login to Amazon ECR
         run: |
           aws ecr get-login-password --region ${{ vars.AWS_REGION }} | docker login --username AWS --password-stdin ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com
 
       - name: Build and Push Docker Image to ECR
+        env:
+          IMAGE_TAG: ${{ needs.authenticate-aws.outputs.image_tag }}
         run: |
           docker build -t flask-app .
-          docker tag flask-app:latest ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
-          docker push ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          docker tag flask-app:latest ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.ECR_REPOSITORY }}:$IMAGE_TAG
+          docker push ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.ECR_REPOSITORY }}:$IMAGE_TAG
+
+  deploy:
+    needs: push-to-ecr
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/pipeline
+          role-session-name: GitHubActions
+          aws-region: ${{ vars.AWS_REGION }}
+          audience: sts.amazonaws.com  
 
       - name: Deploy Container Image to AWS Lambda
+        env:
+          IMAGE_TAG: ${{ needs.authenticate-aws.outputs.image_tag }}
         run: |
           aws lambda update-function-code \
             --function-name ${{ vars.LAMBDA_FUNCTION_NAME }} \
-            --image-uri ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+            --image-uri ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.ECR_REPOSITORY }}:$IMAGE_TAG
 
       - name: Enable Lambda Function URL
         run: |
