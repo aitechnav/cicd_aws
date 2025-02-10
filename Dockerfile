@@ -1,4 +1,4 @@
-# Use Amazon Linux 2 Lambda base image for Python 3.9
+# Use Amazon Linux 2 Lambda base image for Python 3.12
 FROM public.ecr.aws/lambda/python:3.12
 
 # Set working directory inside the container
