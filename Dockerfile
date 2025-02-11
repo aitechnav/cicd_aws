@@ -7,6 +7,7 @@ WORKDIR /var/task
 # Copy application files
 
 COPY lambda_function.py .
+
 COPY requirements.txt .
 
 # Install dependencies
