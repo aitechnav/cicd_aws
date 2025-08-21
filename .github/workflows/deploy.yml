@@ -11,6 +11,14 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
+    # promote all expressions to env so run-scripts are plain bash vars
+    env:
+      AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+      LAMBDA_FUNCTION_NAME: ${{ vars.LAMBDA_FUNCTION_NAME }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,41 +29,53 @@ jobs:
           role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/pipeline
           role-session-name: GitHubActions
           aws-region: ${{ vars.AWS_REGION }}
-          # audience: sts.amazonaws.com   # optional (default)
+          # audience: sts.amazonaws.com  # optional
 
       - name: Set Image Tag
         run: echo "IMAGE_TAG=$(date +%Y%m%d%H%M%S)" >> "$GITHUB_ENV"
 
-      # Optional: create ECR repo if it doesn't exist
       - name: Ensure ECR repository exists (optional)
         run: |
-          aws ecr describe-repositories --repository-names ${{ vars.ECR_REPOSITORY }} >/dev/null 2>&1 || \
-          aws ecr create-repository --repository-name ${{ vars.ECR_REPOSITORY }}
+          aws ecr describe-repositories --repository-names "$ECR_REPOSITORY" >/dev/null 2>&1 || \
+          aws ecr create-repository --repository-name "$ECR_REPOSITORY"
 
       - name: Login to Amazon ECR
         run: |
-          aws ecr get-login-password --region ${{ vars.AWS_REGION }} \
+          aws ecr get-login-password --region "$AWS_REGION" \
             | docker login --username AWS --password-stdin \
-              ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com
+              "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
 
       - name: Build and Push Docker Image to ECR
-        env:
-          REGISTRY: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com
-          REPO: ${{ vars.ECR_REPOSITORY }}
-          TAG: ${{ env.IMAGE_TAG }}
         run: |
           docker build -t flask-app:latest .
-          docker tag flask-app:latest $REGISTRY/$REPO:$TAG
-          docker push $REGISTRY/$REPO:$TAG
+          docker tag flask-app:latest "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG"
+          docker push "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG"
 
       - name: Deploy Image to AWS Lambda
         run: |
           aws lambda update-function-code \
-            --function-name ${{ vars.LAMBDA_FUNCTION_NAME }} \
-            --image-uri ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
-          aws lambda wait function-updated --function-name ${{ vars.LAMBDA_FUNCTION_NAME }}
+            --function-name "$LAMBDA_FUNCTION_NAME" \
+            --image-uri "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG"
+          aws lambda wait function-updated --function-name "$LAMBDA_FUNCTION_NAME"
 
       - name: Enable Lambda Function URL (idempotent)
         run: |
           aws lambda create-function-url-config \
-            --function-name ${{
+            --function-name "$LAMBDA_FUNCTION_NAME" \
+            --auth-type NONE || echo "Function URL exists, skipping."
+
+      - name: Ensure Public Access to Function URL (idempotent)
+        run: |
+          aws lambda add-permission \
+            --function-name "$LAMBDA_FUNCTION_NAME" \
+            --action lambda:InvokeFunctionUrl \
+            --principal "*" \
+            --function-url-auth-type NONE \
+            --statement-id AllowPublicAccess || echo "Permission exists, skipping."
+
+      - name: Show Lambda Function URL
+        run: |
+          URL=$(aws lambda get-function-url-config \
+            --function-name "$LAMBDA_FUNCTION_NAME" \
+            --query FunctionUrl --output text)
+          echo "Lambda Function URL: $URL"
