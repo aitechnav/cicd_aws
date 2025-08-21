@@ -11,7 +11,7 @@ def home():
     <title>Workshop demo</title>
 </head>
 <body>
-    <h1>The best way to predict the future is to deploy it.</h1>
+    <h1>The best way to predict the future is to deploy it!</h1>
     <br> <br>
     <p>This page is served from an AWS Lambda container.</p>
 </body>
