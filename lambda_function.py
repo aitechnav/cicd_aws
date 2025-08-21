@@ -13,7 +13,7 @@ def home():
 <body>
     <h1>The best way to predict the future is to deploy it!</h1>
     <br> <br>
-    <p>This page is served from an AWS Lambda.</p>
+    <p>This page is served from an AWS Lambda deployed via Docker Image.</p>
 </body>
 </html>"""
 
