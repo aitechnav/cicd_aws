@@ -21,7 +21,7 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/pipeline
           role-session-name: GitHubActions
-          aws-region: us-east-1
+          aws-region: ${{ vars.AWS_REGION }
           audience: sts.amazonaws.com  
 
       - name: Set Image Tag
